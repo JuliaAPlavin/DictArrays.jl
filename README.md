@@ -1,10 +1,15 @@
 # DictArrays.jl
 
-Dictionary-based arrays, useful to represent wide heterogeneous tables and enjoy the familiar Julia collection interface.
+Dictionary-based arrays, useful to represent wide heterogeneous tables while enjoying the familiar Julia collection and `Tables` interfaces.
 
-# Motivation
+Use `DictArrays` when you need a lean table type, but the compilation overhead of type-stable solutions (`Vector{NamedTuple}`, `NamedTuple{Vector}`, `StructArray`) is too much.
 
-Similar to `StructArrays`, but doesn't encode all column types in the table type. Compilation is fast even for tables with hundreds of columns.
+`DictArray`s are similar to `StructArrays` and have the same interface where possible, with the defining difference that `DictArray`s do not encode columns in the table type. This get rids of the prohibitive compilation overhead for wide tables with 100s of columns or more.
+Despite the inherent type instability, regular Julia data manipulation functions such as `map` and `filter` are fast for `DictArray`s: almost no overhead compared to `StructArray`s, orders of magnitude faster than plain `Vector`s of `Dict`s.
+
+# Examples
+
+`DictArray`s are fast even for tables with hundreds of thousands of columns:
 ```julia
 # 1000 columns - almost instant
 julia> da = @time DictArray(Dictionary(Symbol.(:a, 1:10^3), fill(1:1, 10^3)))
@@ -19,7 +24,8 @@ julia> @time StructArray(da);
 julia> @time DictArray(Dictionary(Symbol.(:a, 1:10^5), [fill(1:1, 2*10^4); fill([1.], 2*10^4); fill([:a], 2*10^4); fill(["a"], 2*10^4); fill([false], 2*10^4)]))
   0.228542 seconds (878.81 k allocations: 39.484 MiB, 11.63% gc time, 52.54% compilation time)
 ```
-Common Julia functions such as `map` and `filter` work, and are performant for long and wide tables despite the inherent type-instability:
+
+At the same time, common Julia functions such as `map` and `filter` work, and are performant for long and wide tables despite the inherent type-instability:
 ```julia
 julia> da = DictArray(a=1:10^6, b=collect(1.0:10^6), c=fill("hello", 10^6));
 
