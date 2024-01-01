@@ -173,7 +173,7 @@ end
 
 Tables.istable(::Type{<:DictArray}) = true
 Tables.columnaccess(::Type{<:DictArray}) = true
-Tables.columns(da::DictArray) = AbstractDictionary(da)
+@accessor Tables.columns(da::DictArray) = AbstractDictionary(da)
 Tables.schema(da::DictArray) = Tables.Schema(collect(keys(AbstractDictionary(da))), collect(map(eltype, AbstractDictionary(da))))
 
 
@@ -202,5 +202,9 @@ FlexiMaps._similar_with_content_sameeltype(da::DictArray) = copy(da)
 Base.propertynames(d::AbstractDictionary) = Dictionaries._values(keys(d))
 Base.@propagate_inbounds Base.getproperty(d::AbstractDictionary, s::Symbol) = hasfield(typeof(d), s) ? getfield(d, s) : d[s]
 ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = merge(obj, Dictionary(keys(patch), values(patch)))
+
+
+# XXX: piracy, should upstream
+Accessors.set(sa::StructArray, ::typeof(Tables.columns), cols) = set(sa, StructArrays.components, cols)
 
 end
