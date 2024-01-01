@@ -12,7 +12,8 @@ using Tables
 
 export DictArray, Cols
 
-
+Base.propertynames(d::D) where {D<:AbstractDictionary} = keys(d)
+ConstructionBase.setproperties(obj::D, patch::NamedTuple) where {D<:AbstractDictionary} = merge(obj, Dictionary(keys(patch), values(patch)))
 Base.@propagate_inbounds Base.getproperty(d::D, s::Symbol) where {D<:AbstractDictionary} = hasfield(D, s) ? getfield(d, s) : d[s]
 Base.@propagate_inbounds function Base.setproperty!(d::D, s::Symbol, x) where {D<:AbstractDictionary}
     hasfield(D, s) && return setfield!(d, s, x)
@@ -25,7 +26,10 @@ struct DictArray
     dct::Dictionary{Symbol, <:AbstractVector}
 
     # so that we don't have DictArray(::Any) that gets overriden below
-    DictArray(dct::Dictionary{Symbol, <:AbstractVector}) = new(dct)
+    function DictArray(dct::Dictionary{Symbol, <:AbstractVector})
+        @assert allequal(map(axes, dct))
+        new(dct)
+    end
 end
 
 DictArray(d::AbstractDictionary) = @p let
@@ -34,7 +38,8 @@ DictArray(d::AbstractDictionary) = @p let
     @aside @assert __ isa Dictionary{Symbol, <:AbstractVector}
     DictArray()
 end
-DictArray(d::AbstractDict) = DictArray(Dictionary(keys(d), values(d)))
+DictArray(d::Union{AbstractDict,NamedTuple}) = DictArray(Dictionary(keys(d), values(d)))
+DictArray(; kwargs...) = DictArray(values(kwargs))
 DictArray(tbl) = @p let
     tbl
     Tables.dictcolumntable()
@@ -42,9 +47,19 @@ DictArray(tbl) = @p let
     DictArray()
 end
 
-Base.length(da::DictArray) = length(first(Dictionary(da)))
-Base.getindex(da::DictArray, i) = map(a -> a[i], Dictionary(da))
+for f in (:isempty, :length, :size, :firstindex, :lastindex, :eachindex, :keys, :keytype)
+    @eval Base.$f(da::DictArray) = $f(first(Dictionary(da)))
+end
+Base.valtype(::Type{<:DictArray}) = Dictionary{Symbol}
+Base.valtype(::DictArray) = Dictionary{Symbol}
+Base.eltype(::Type{<:DictArray}) = Dictionary{Symbol}
+Base.getindex(da::DictArray, I::Integer...) = map(a -> a[I...], Dictionary(da))
+Base.getindex(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> a[I], Dictionary(da)[∗])
+Base.view(da::DictArray, I::Integer...) = map(a -> view(a, I...), Dictionary(da))
+Base.view(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> view(a, I), Dictionary(da)[∗])
 Base.first(da::DictArray) = map(first, Dictionary(da))
+Base.last(da::DictArray) = map(last, Dictionary(da))
+Base.values(da::DictArray) = da
 
 Base.propertynames(da::DictArray) = collect(keys(Dictionary(da)))
 Base.getproperty(da::DictArray, i::Symbol) = Dictionary(da)[i]
@@ -59,6 +74,7 @@ Base.getindex(da::DictArray, i::Cols) = error("Not supported")
 
 Dictionaries.Dictionary(da::DictArray) = getfield(da, :dct)
 Base.Dict(da::DictArray) = Dict(pairs(Dictionary(da)))
+Base.NamedTuple(da::DictArray) = (; pairs(Dictionary(da))...)
 StructArrays.StructArray(da::DictArray) = da[Cols(keys(Dictionary(da))...)]
 Base.collect(da::DictArray) = map(i -> da[i], 1:length(da))
 
@@ -122,6 +138,13 @@ Accessors.set(da::DictArray, ::Type{Dictionary}, val::Dictionary) = DictArray(va
 Accessors.delete(da::DictArray, ::PropertyLens{P}) where {P} = @delete Dictionary(da)[P]
 Accessors.insert(da::DictArray, ::PropertyLens{P}, val) where {P} = @insert Dictionary(da)[P] = val
 Accessors.mapproperties(f, da::DictArray) = @modify(f, Dictionary(da)[∗])
+
+function Accessors.setindex(da::DictArray, val::Dictionary{Symbol}, I::Integer...)
+    @assert keys(Dictionary(da)) == keys(val)
+    @modify(Dictionary(da) |> keyed(∗)) do (k, col)
+        @set col[I...] = val[k]
+    end
+end
 
 
 Tables.istable(::Type{<:DictArray}) = true

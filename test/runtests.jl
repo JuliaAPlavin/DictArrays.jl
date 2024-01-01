@@ -70,6 +70,44 @@ using TestItemRunner
     @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=1*12+30*12)
 end
 
+@testitem "collection interface" begin
+    using Dictionaries
+
+    da = DictArray(a=1:3, b=collect(1.0:3.0))
+    @test !isempty(da)
+    @test length(da) == 3
+    @test size(da) == (3,)
+    @test valtype(da) == eltype(da) == Dictionary{Symbol}
+    @test keytype(da) == Int
+    @test collect(da)::Vector{<:Dictionary{Symbol}} == [Dictionary([:a, :b], [1, 1.0]), Dictionary([:a, :b], [2, 2.0]), Dictionary([:a, :b], [3, 3.0])]
+    @test da[2] == Dictionary([:a, :b], [2, 2.0])
+    @test first(da) == Dictionary([:a, :b], [1, 1.0])
+    @test lastindex(da) == 3
+    @test eachindex(da) == keys(da) == 1:3
+    @test values(da) == da
+
+    dai = da[1:2]
+    @test dai isa DictArray
+    @test dai.a === 1:2
+    @test dai.b::Vector == [1.0, 2.0]
+    @test length(dai) == 2
+
+    dai = da[1:0]
+    @test dai isa DictArray
+    @test isempty(dai)
+    @test_broken collect(dai)::Vector{<:Dictionary{Symbol}} == []
+
+    dai = @view da[1:2]
+    @test dai isa DictArray
+    @test dai.a === 1:2
+    @test dai.b::SubArray == [1.0, 2.0]
+    @test length(dai) == 2
+
+    @test (NamedTuple(da)::NamedTuple).a === da.a
+    @test DictArray(NamedTuple(da)) == da
+    @test DictArray(; NamedTuple(da)...) == da
+end
+
 @testitem "Accessors" begin
     using Accessors
     using DataPipes
@@ -97,9 +135,14 @@ end
     @test das.a2 === das.a1 === da.a1
     @test !haskey(Dictionary(das), :b10)
     @test das.x === das.c5
+
     das = @modify(c -> c .* 100, da |> Properties() |> If(c -> eltype(c) <: Number))
     @test das.a10 == 100 .* da.a10
     @test das.b5 === da.b5
+
+    das = @set da[1].a10 = 100
+    @test das[1].a10 == 100
+    @test das[2].a10 == 20
 end
 
 @testitem "Tables" begin
