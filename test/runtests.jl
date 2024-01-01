@@ -204,7 +204,6 @@ end
         @test isempty(flatten([da][1:0]))
         @test flatten([da]) == da
         @test flatten([da, da]) == DictArray(a=[1, 2, 3, 1, 2, 3], b=[1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
-        @test flatten([da][1:0])::Vector |> isempty  # maybe should error?
         @test flatten((da for da in [da_mut, da_mut])) == DictArray(a=[1, 2, 3, 1, 2, 3], b=[1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
         @test_broken flatmap(r -> 1:r.a, da)
     end

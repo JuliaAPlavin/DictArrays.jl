@@ -21,7 +21,7 @@ struct DictArray{DT<:AbstractDictionary{Symbol}}
 
     # so that we don't have DictArray(::Any) that gets overriden below
     function DictArray(dct::AbstractDictionary{Symbol})
-        @assert all(isequal(axes(any_element(dct))) ∘ axes, dct)
+        @assert isempty(dct) || all(isequal(axes(any_element(dct))) ∘ axes, dct)
         new{typeof(dct)}(dct)
     end
 end
@@ -42,7 +42,11 @@ DictArray(tbl) = @p let
     DictArray()
 end
 
-for f in (:isempty, :length, :size, :firstindex, :lastindex, :eachindex, :keys, :keytype)
+Base.convert(::Type{DictArray{DT}}, da::DictArray) where {DT} = DictArray(convert(DT, AbstractDictionary(da)))
+
+@eval Base.isempty(da::DictArray) = isempty(AbstractDictionary(da)) || isempty(any_element(AbstractDictionary(da)))
+@eval Base.length(da::DictArray) = isempty(AbstractDictionary(da)) ? 0 : length(any_element(AbstractDictionary(da)))
+for f in (:size, :firstindex, :lastindex, :eachindex, :keys, :keytype)
     @eval Base.$f(da::DictArray) = $f(any_element(AbstractDictionary(da)))
 end
 Base.axes(da::DictArray, args...) = axes(any_element(AbstractDictionary(da)), args...)
@@ -210,7 +214,7 @@ function Base.vcat(das::DictArray...)
 end
 
 function FlexiMaps.flatten(::Type{T}, A::Base.AbstractVecOrTuple{<:DictArray}) where {T}
-    isempty(A) && return FlexiMaps._empty_from_type(FlexiMaps._eltype(A), T)
+    isempty(A) && return DictArray(Dictionary{Symbol,Vector}())
     return reduce(vcat, A)
 end
 
