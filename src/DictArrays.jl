@@ -117,23 +117,24 @@ Base.valtype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
 Base.valtype(::DictArray) = AbstractDictionary{Symbol}
 Base.eltype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
 Base.@propagate_inbounds function Base.getindex(da::DictArray, I::Union{Integer,CartesianIndex}...)
-    @boundscheck checkbounds(Bool, da, I...)
+    @boundscheck checkbounds(da, I...)
     map(a -> @inbounds(a[I...]), AbstractDictionary(da))
 end
 Base.@propagate_inbounds function Base.getindex(da::DictArray, I::AbstractVector{<:Integer})
-    @boundscheck checkbounds(Bool, da, I)
+    @boundscheck checkbounds(da, I)
     @modify(dct -> map(a -> @inbounds(a[I]), dct), AbstractDictionary(da))
 end
 Base.@propagate_inbounds function Base.view(da::DictArray, I::Integer...)
-    @boundscheck checkbounds(Bool, da, I...)
+    @boundscheck checkbounds(da, I...)
     map(a -> @inbounds(view(a, I...)), AbstractDictionary(da))
 end
 Base.@propagate_inbounds function Base.view(da::DictArray, I::AbstractVector{<:Integer})
-    @boundscheck checkbounds(Bool, da, I)
+    @boundscheck checkbounds(da, I)
     @modify(dct -> map(a -> @inbounds(view(a, I)), dct), AbstractDictionary(da))
 end
 
 Base.checkbounds(::Type{Bool}, da::DictArray, I...) = checkbounds(Bool, _any_element(AbstractDictionary(da)), I...)
+Base.checkbounds(da::DictArray, I...) = checkbounds(_any_element(AbstractDictionary(da)), I...)
 Base.first(da::DictArray) = map(first, AbstractDictionary(da))
 Base.last(da::DictArray) = map(last, AbstractDictionary(da))
 Base.values(da::DictArray) = da
