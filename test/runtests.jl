@@ -28,6 +28,11 @@ using TestItemRunner
         @test Dict(da)[:a1] === coldict[:a1]
         @test AbstractDictionary(DictArray(Dict(da)))[:a1] === coldict[:a1]
 
+        @test length(da) == 100
+        @test axes(da) == (Base.OneTo(100),)
+        @test ndims(da) == 1
+        @test IndexStyle(da) == IndexLinear()
+
         @test da.a1 === 1 .* (1:Nrow)
         
         da1 = da[Cols([:a1, :b10, :c30])]

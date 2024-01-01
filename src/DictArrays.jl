@@ -48,6 +48,8 @@ for f in (:isempty, :length, :size, :firstindex, :lastindex, :eachindex, :keys, 
     @eval Base.$f(da::DictArray) = $f(any_element(AbstractDictionary(da)))
 end
 Base.axes(da::DictArray, args...) = axes(any_element(AbstractDictionary(da)), args...)
+Base.ndims(da::DictArray) = ndims(any_element(AbstractDictionary(da)))
+Base.IndexStyle(da::DictArray) = IndexStyle(any_element(AbstractDictionary(da)))
 Base.valtype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
 Base.valtype(::DictArray) = AbstractDictionary{Symbol}
 Base.eltype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
