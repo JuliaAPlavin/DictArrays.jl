@@ -17,7 +17,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 Accessors = "0.1.28"
-AccessorsExtra = "0.1.25"
+AccessorsExtra = "0.1.48"
 Aqua = "0.6.0"
 CSV = "0.10.9"
 CompatHelperLocal = "0.1.25"

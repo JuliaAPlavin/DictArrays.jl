@@ -251,8 +251,10 @@ end
     das = @p let
         da
         @set __.a2 = __.a1
+        @set __.a3 = __.a1 .+ 0.5
         @delete __.b10
         @insert __.x = __.c5
+        @insert __.y = map(Symbol ∘ string, __.c5)
     end
     @test das.a2 === das.a1 === da.a1
     @test !haskey(AbstractDictionary(das), :b10)
