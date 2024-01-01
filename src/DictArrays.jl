@@ -199,7 +199,7 @@ FlexiMaps._similar_with_content_sameeltype(da::DictArray) = copy(da)
 
 # piracy, see PR:
 # https://github.com/andyferris/Dictionaries.jl/pull/43
-Base.propertynames(d::AbstractDictionary) = Dictionaries._values(keys(d))
+Base.propertynames(d::AbstractDictionary) = collect(keys(d))
 Base.@propagate_inbounds Base.getproperty(d::AbstractDictionary, s::Symbol) = hasfield(typeof(d), s) ? getfield(d, s) : d[s]
 ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = merge(obj, Dictionary(keys(patch), values(patch)))
 
