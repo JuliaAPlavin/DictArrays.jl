@@ -129,6 +129,7 @@ end
 
 @testitem "Accessors" begin
     using Accessors
+    using AccessorsExtra  # for Dictionaries
     using DataPipes
     using Dictionaries
     using FlexiMaps
