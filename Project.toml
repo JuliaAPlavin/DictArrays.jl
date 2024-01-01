@@ -1,0 +1,6 @@
+name = "DictArrays"
+uuid = "e9958f2c-b184-4647-9c5a-224a61f6a14b"
+authors = ["Alexander Plavin <alexander@plav.in>"]
+version = "0.1.0"
+
+[deps]
