@@ -80,6 +80,8 @@ Base.collect(da::DictArray) = map(i -> da[i], 1:length(da))
 
 Base.:(==)(a::DictArray, b::DictArray) = Dictionary(a) == Dictionary(b)
 
+Base.filter(f, da::DictArray) = da[map(f, da)]
+
 function Base.map(f, da::DictArray)
     t = tracedkeys(first(da))
     fres = f(t)

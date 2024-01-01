@@ -106,7 +106,26 @@ end
     @test (NamedTuple(da)::NamedTuple).a === da.a
     @test DictArray(NamedTuple(da)) == da
     @test DictArray(; NamedTuple(da)...) == da
+
+    daf = filter(r -> r.a >= 2, da)
+    @test daf == da[2:3]
 end
+
+# @testitem "Flexi" begin
+#     using FlexiMaps
+#     using FlexiGroups
+#     using FlexiJoins
+#     using StructArrays
+
+#     da = DictArray(a=1:3, b=collect(1.0:3.0))
+#     @test_broken filtermap(r -> r.a >= 2 ? (;r.a) : nothing, da)::StructArray == [(a=2,), (a=3,)]
+#     @test_broken flatmap(r -> 1:r.a, da)
+#     @test_broken mapview(r -> r.a, da) == [1, 2, 3]
+#     @test_broken group(r -> r.a, da)
+#     @test_broken groupview(r -> r.a, da)
+#     @test_broken groupmap(r -> r.a, length, da)
+#     @test_broken innerjoin((da, da), by_key(:a))
+# end
 
 @testitem "Accessors" begin
     using Accessors
