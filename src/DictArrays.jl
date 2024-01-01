@@ -95,19 +95,12 @@ end
     
 function _map(f, da::DictArray, cols::Cols)
     try
-        map(da[cols]) do r
-            try
-                f(r)
-            catch e
-                e isa ErrorException || rethrow()
-                m = match(r"has no field (\w+)$", e.msg)
-                isnothing(m) && rethrow()
-                throw(_map(f, da, Cols(cols.cols..., Symbol(m.captures[1]))))
-            end
-        end
+        map(f, da[cols])
     catch e
-        e isa Exception && rethrow()
-        return e
+        e isa ErrorException || rethrow()
+        m = match(r"has no field (\w+)$", e.msg)
+        isnothing(m) && rethrow()
+        return _map(f, da, Cols(cols.cols..., Symbol(m.captures[1])))
     end
 end
 
