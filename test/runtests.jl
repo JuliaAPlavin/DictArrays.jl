@@ -70,6 +70,38 @@ using TestItemRunner
     @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=1*12+30*12)
 end
 
+@testitem "Accessors" begin
+    using Accessors
+    using DataPipes
+    using Dictionaries
+    using FlexiMaps
+    using StructArrays
+
+    Nrow = 10^2
+    Ncol = 10^3
+    coldict = dictionary(flatmap(1:Ncol) do ci
+        [
+            Symbol(:a, ci) => ci .* (1:Nrow),
+            Symbol(:b, ci) => ["str_$i" for i in ci .* (1:Nrow)],
+            Symbol(:c, ci) => collect(ci .* (1:Nrow)),
+        ]	
+    end)
+    da = DictArray(coldict)
+
+    das = @p let
+        da
+        @set __.a2 = __.a1
+        @delete __.b10
+        @insert __.x = __.c5
+    end
+    @test das.a2 === das.a1 === da.a1
+    @test !haskey(Dictionary(das), :b10)
+    @test das.x === das.c5
+    das = @modify(c -> c .* 100, da |> Properties() |> If(c -> eltype(c) <: Number))
+    @test das.a10 == 100 .* da.a10
+    @test das.b5 === da.b5
+end
+
 @testitem "Tables" begin
     using Tables
     using CSV

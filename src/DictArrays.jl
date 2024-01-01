@@ -4,6 +4,9 @@ using Dictionaries
 using Indexing: getindices
 using StructArrays
 using DataAPI: Cols
+using ConstructionBase
+using Accessors
+using AccessorsExtra  # for Dictionaries support
 using DataPipes
 using Tables
 
@@ -106,6 +109,19 @@ function Base.getindex(t::TracedKeys, i::Tuple{Vararg{Symbol}})
     NamedTuple{i}(getindices(_dct(t), i))
 end
 Base.merge(nt::NamedTuple, t::TracedKeys) = merge(nt, t[Tuple(keys(_dct(t)))])
+
+
+ConstructionBase.setproperties(da::DictArray, patch::NamedTuple) = 
+    @modify(Dictionary(da)) do dct
+        for (k, v) in pairs(patch)
+            @reset dct[k] = v
+        end
+        dct
+    end
+Accessors.set(da::DictArray, ::Type{Dictionary}, val::Dictionary) = DictArray(val)
+Accessors.delete(da::DictArray, ::PropertyLens{P}) where {P} = @delete Dictionary(da)[P]
+Accessors.insert(da::DictArray, ::PropertyLens{P}, val) where {P} = @insert Dictionary(da)[P] = val
+Accessors.mapproperties(f, da::DictArray) = @modify(f, Dictionary(da)[∗])
 
 
 Tables.istable(::Type{<:DictArray}) = true
