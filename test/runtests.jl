@@ -22,6 +22,7 @@ using TestItemRunner
     @test Dict(da)[:a1] === coldict[:a1]
     @test Dictionary(DictArray(Dict(da)))[:a1] === coldict[:a1]
 
+    @test eltype(AbstractDictionary(da)) == Union{StepRangeLen{Int64, Int64, Int64, Int64}, Vector{Int64}, Vector{String}}
     @test da.a1 === 1 .* (1:Nrow)
     
     da1 = da[Cols([:a1, :b10, :c30])]

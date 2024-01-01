@@ -8,6 +8,7 @@ using ConstructionBase
 using Accessors
 using DataPipes
 using Tables
+using FlexiMaps
 
 export DictArray, Cols
 
@@ -27,16 +28,22 @@ function _fromcontent(vals)
         push!(parts[partix], v)
         (partix, lastindex(parts[partix]))
     end |> collect
-    return VectorParted{Any}(parts, ix_to_partix)
+    return VectorParted(parts, ix_to_partix)
 end
 
-function Base.getindex(v::VectorParted, I::Int...)
+Base.@propagate_inbounds function Base.getindex(v::VectorParted, I::Int...)
     partix, ix_in_part = v.ix_to_partix[I...]
     return v.parts[partix][ix_in_part]
 end
 
 Base.size(v::VectorParted) = size(v.ix_to_partix)
-Base.map(f, v::VectorParted) = @modify(f, v.parts |> Elements() |> Elements())
+Base.map(f, v::VectorParted) = @modify(v.parts) do ps
+    map(p -> map(f, p), ps)
+end
+
+FlexiMaps.mapview(f, v::VectorParted) = @modify(v.parts) do ps
+    map(p -> mapview(f, p), ps)
+end
 
 
 struct DictionaryParted{I,T,VT<:VectorParted{T}} <: AbstractDictionary{I,T}
@@ -56,7 +63,8 @@ Dictionaries.istokenassigned(dict::DictionaryParted, index::Int) = isassigned(_v
 Dictionaries.gettokenvalue(dict::DictionaryParted, (_slot, index)) = _values(dict)[index]
 Dictionaries.gettokenvalue(dict::DictionaryParted, index::Int) = _values(dict)[index]
 
-Base.map(f, d::DictionaryParted) = @modify(f, _values(d) |> Elements())
+Base.map(f, d::DictionaryParted) = @modify(vs -> map(f, vs), _values(d))
+FlexiMaps.mapview(f, d::DictionaryParted) = @modify(vs -> mapview(f, vs), _values(d))
 
 
 # https://github.com/andyferris/Dictionaries.jl/pull/43
@@ -75,7 +83,7 @@ struct DictArray
 
     # so that we don't have DictArray(::Any) that gets overriden below
     function DictArray(dct::DictionaryParted{Symbol})
-        @assert allequal(map(axes, dct))
+        @assert allequal(mapview(axes, dct))
         new(dct)
     end
 end
@@ -104,10 +112,24 @@ Base.axes(da::DictArray, args...) = axes(first(AbstractDictionary(da)), args...)
 Base.valtype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
 Base.valtype(::DictArray) = AbstractDictionary{Symbol}
 Base.eltype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
-Base.getindex(da::DictArray, I::Union{Integer,CartesianIndex}...) = map(a -> a[I...], AbstractDictionary(da))
-Base.getindex(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> a[I], AbstractDictionary(da) |> Elements())
-Base.view(da::DictArray, I::Integer...) = map(a -> view(a, I...), AbstractDictionary(da))
-Base.view(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> view(a, I), AbstractDictionary(da) |> Elements())
+Base.@propagate_inbounds function Base.getindex(da::DictArray, I::Union{Integer,CartesianIndex}...)
+    @boundscheck checkbounds(Bool, da, I...)
+    map(a -> @inbounds(a[I...]), AbstractDictionary(da))
+end
+Base.@propagate_inbounds function Base.getindex(da::DictArray, I::AbstractVector{<:Integer})
+    @boundscheck checkbounds(Bool, da, I)
+    @modify(a -> @inbounds(a[I]), AbstractDictionary(da) |> Elements())
+end
+Base.@propagate_inbounds function Base.view(da::DictArray, I::Integer...)
+    @boundscheck checkbounds(Bool, da, I...)
+    map(a -> @inbounds(view(a, I...)), AbstractDictionary(da))
+end
+Base.@propagate_inbounds function Base.view(da::DictArray, I::AbstractVector{<:Integer})
+    @boundscheck checkbounds(Bool, da, I)
+    @modify(a -> @inbounds(view(a, I)), AbstractDictionary(da) |> Elements())
+end
+
+Base.checkbounds(::Type{Bool}, da::DictArray, I...) = checkbounds(Bool, first(AbstractDictionary(da)), I...)
 Base.first(da::DictArray) = map(first, AbstractDictionary(da))
 Base.last(da::DictArray) = map(last, AbstractDictionary(da))
 Base.values(da::DictArray) = da
@@ -134,11 +156,14 @@ function Base.getindex(da::DictArray, i::Cols{<:Tuple{Vararg{Symbol}}})
     StructArray(cols)
 end
 Base.getindex(da::DictArray, i::Cols{<:Tuple{Tuple{Vararg{Symbol}}}}) = da[Cols(only(i.cols)...)]
-Base.getindex(da::DictArray, i::Cols{<:Tuple{AbstractVector{Symbol}}}) = DictArray(getindices(AbstractDictionary(da), Indices(only(i.cols))))
+Base.getindex(da::DictArray, i::Cols{<:Tuple{AbstractVector{Symbol}}}) = 
+    @modify(AbstractDictionary(da)) do dct
+        getindices(dct, Indices(only(i.cols)))
+    end
 Base.getindex(da::DictArray, i::Cols) = error("Not supported")
 
 Dictionaries.AbstractDictionary(da::DictArray) = getfield(da, :dct)
-Dictionaries.Dictionary(da::DictArray) = Dictionary(AbstractDictionary(da))
+Dictionaries.Dictionary(da::DictArray) = Dictionary(AbstractDictionary(da))  # remove?
 Base.Dict(da::DictArray) = Dict(pairs(AbstractDictionary(da)))
 Base.NamedTuple(da::DictArray) = (; pairs(AbstractDictionary(da))...)
 StructArrays.StructArray(da::DictArray) = da[Cols(keys(AbstractDictionary(da))...)]
@@ -211,5 +236,29 @@ Tables.istable(::Type{<:DictArray}) = true
 Tables.columnaccess(::Type{<:DictArray}) = true
 Tables.columns(da::DictArray) = da
 Tables.schema(da::DictArray) = Tables.Schema(collect(keys(AbstractDictionary(da))), collect(map(eltype, AbstractDictionary(da))))
+
+
+## fast-path for map(), and support for mapview():
+
+Base.map(f::PropertyLens, da::DictArray) = map(identity, f(da))
+Base.map(f::IndexLens{Tuple{Symbol}}, da::DictArray) = map(identity, f(Dictionary(da)))
+function Base.map(f::ComposedFunction, da::DictArray)
+    fs = Accessors.decompose(f)
+    map(Accessors.compose(Base.front(fs)...), mapview(last(fs), da))
+end
+
+FlexiMaps.mapview(f::PropertyLens, da::DictArray) = f(da)
+FlexiMaps.mapview(f::IndexLens{Tuple{Symbol}}, da::DictArray) = f(Dictionary(da))
+function FlexiMaps.mapview(f::ComposedFunction, da::DictArray)
+    fs = Accessors.decompose(f)
+    mapview(Accessors.compose(Base.front(fs)...), mapview(last(fs), da))
+end
+
+# disambiguation:
+FlexiMaps.mapview(p::Union{Symbol,Int,String}, A::VectorParted) = mapview(PropertyLens(p), A)
+FlexiMaps.mapview(p::Union{Symbol,Int,String}, A::DictionaryParted) = mapview(PropertyLens(p), A)
+
+# for flatten() to work:
+FlexiMaps._similar_with_content_sameeltype(da::DictArray) = copy(da)
 
 end
