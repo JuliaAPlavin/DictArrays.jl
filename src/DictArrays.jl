@@ -200,7 +200,20 @@ function FlexiMaps.mapview(f::ComposedFunction, da::DictArray)
     mapview(compose(Base.front(fs)...), mapview(last(fs), da))
 end
 
-# for flatten() to work:
+
+# vcat, flatten:
+function Base.vcat(das::DictArray...)
+    @assert allequal(map(keys ∘ AbstractDictionary, das))
+    DictArray(map(map(AbstractDictionary, das)...) do cols...
+        vcat(cols...)
+    end)
+end
+
+function FlexiMaps.flatten(::Type{T}, A::Base.AbstractVecOrTuple{<:DictArray}) where {T}
+    isempty(A) && return FlexiMaps._empty_from_type(FlexiMaps._eltype(A), T)
+    return reduce(vcat, A)
+end
+
 FlexiMaps._similar_with_content_sameeltype(da::DictArray) = copy(da)
 
 

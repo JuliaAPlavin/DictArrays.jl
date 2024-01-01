@@ -112,6 +112,8 @@ end
     @test eachindex(da) == keys(da) == 1:3
     @test values(da) === da
 
+    @test (vcat(da, da)::DictArray).a == [1:3; 1:3]
+
     dai = da[1:2]
     @test dai isa DictArray
     @test dai.a === 1:2
@@ -191,9 +193,8 @@ end
     using Dictionaries
     using Accessors
 
-    # non-resizeable arrays are broken now in eg flatten() - don't work
-    # da = DictArray(a=1:3, b=collect(1.0:3.0))
-    da = DictArray(a=[1, 2, 3], b=collect(1.0:3.0))
+    da = DictArray(a=1:3, b=collect(1.0:3.0))
+    da_mut = DictArray(a=collect(1:3), b=collect(1.0:3.0))
 
     dafm = filtermap(r -> r.a >= 2 ? (;r.a) : nothing, da)
     @test dafm == [(a=2,), (a=3,)]
@@ -203,6 +204,8 @@ end
         @test isempty(flatten([da][1:0]))
         @test flatten([da]) == da
         @test flatten([da, da]) == DictArray(a=[1, 2, 3, 1, 2, 3], b=[1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
+        @test flatten([da][1:0])::Vector |> isempty  # maybe should error?
+        @test flatten((da for da in [da_mut, da_mut])) == DictArray(a=[1, 2, 3, 1, 2, 3], b=[1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
         @test_broken flatmap(r -> 1:r.a, da)
     end
 
