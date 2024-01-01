@@ -68,6 +68,8 @@ using TestItemRunner
     @test sa isa StructArray
     @test isconcretetype(eltype(sa))
     @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=1*12+30*12)
+
+    @test_broken (DictArray(); true)  # what should empty constructor do?
 end
 
 @testitem "nested" begin
