@@ -77,10 +77,10 @@ end
     @test da.c isa StructArray
     @test da.c.d === 1:3
 
-    @test_broken da = DictArray(a=1:3, b=collect(1.0:3.0), c=DictArray(d=1:3, e=collect(1.0:3.0)))
+    @test_broken da == DictArray(a=1:3, b=collect(1.0:3.0), c=DictArray(d=1:3, e=collect(1.0:3.0)))
 end
 
-@testitem "collection interface" begin
+@testitem "collection interface - 1d" begin
     using Dictionaries
 
     da = DictArray(a=1:3, b=collect(1.0:3.0))
@@ -94,7 +94,7 @@ end
     @test first(da) == Dictionary([:a, :b], [1, 1.0])
     @test lastindex(da) == 3
     @test eachindex(da) == keys(da) == 1:3
-    @test values(da) == da
+    @test values(da) === da
 
     dai = da[1:2]
     @test dai isa DictArray
@@ -105,7 +105,7 @@ end
     dai = da[1:0]
     @test dai isa DictArray
     @test isempty(dai)
-    @test_broken collect(dai)::Vector{<:Dictionary{Symbol}} == []
+    @test collect(dai)::Vector{<:Dictionary{Symbol}} == []
 
     dai = @view da[1:2]
     @test dai isa DictArray
@@ -119,6 +119,49 @@ end
 
     daf = filter(r -> r.a >= 2, da)
     @test daf == da[2:3]
+end
+
+@testitem "collection interface - nd" begin
+    using Dictionaries
+
+    da = DictArray(a=reshape(1:6, 2, 3), b=[1.0 3 5; 2 4 6])
+    @test !isempty(da)
+    @test length(da) == 6
+    @test size(da) == (2, 3)
+    @test valtype(da) == eltype(da) == Dictionary{Symbol}
+    @test keytype(da) == CartesianIndex{2}
+    @test (collect(da)::Matrix{<:Dictionary{Symbol}})[2, 3] == Dictionary([:a, :b], [6, 6.0])
+    @test da[2] == Dictionary([:a, :b], [2, 2.0])
+    @test first(da) == Dictionary([:a, :b], [1, 1.0])
+    @test lastindex(da) == 6
+    @test eachindex(da) === Base.OneTo(6)
+    @test keys(da) === CartesianIndices((2, 3))
+    @test_broken CartesianIndices(da) === keys(da)
+    @test values(da) === da
+
+    dai = da[1:2]
+    @test dai isa DictArray
+    @test dai.a == 1:2
+    @test dai.b::Vector == [1.0, 2.0]
+    @test length(dai) == 2
+
+    dai = da[1:0]
+    @test dai isa DictArray
+    @test isempty(dai)
+    @test collect(dai)::Vector{<:Dictionary{Symbol}} == []
+
+    dai = @view da[1:2]
+    @test dai isa DictArray
+    @test dai.a == 1:2
+    @test dai.b::SubArray == [1.0, 2.0]
+    @test length(dai) == 2
+
+    @test (NamedTuple(da)::NamedTuple).a === da.a
+    @test DictArray(NamedTuple(da)) == da
+    @test DictArray(; NamedTuple(da)...) == da
+
+    # daf = filter(r -> r.a >= 2, da)
+    # @test daf == da[2:3]
 end
 
 # @testitem "Flexi" begin

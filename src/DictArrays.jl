@@ -24,10 +24,10 @@ ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = mer
 
 
 struct DictArray
-    dct::Dictionary{Symbol, <:AbstractVector}
+    dct::Dictionary{Symbol, <:AbstractArray}
 
     # so that we don't have DictArray(::Any) that gets overriden below
-    function DictArray(dct::Dictionary{Symbol, <:AbstractVector})
+    function DictArray(dct::Dictionary{Symbol, <:AbstractArray})
         @assert allequal(map(axes, dct))
         new(dct)
     end
@@ -35,8 +35,8 @@ end
 
 DictArray(d::AbstractDictionary) = @p let
     Dictionary(keys(d), values(d))
-    map(convert(AbstractVector, _))
-    @aside @assert __ isa Dictionary{Symbol, <:AbstractVector}
+    map(convert(AbstractArray, _))
+    @aside @assert __ isa Dictionary{Symbol, <:AbstractArray}
     DictArray()
 end
 DictArray(d::Union{AbstractDict,NamedTuple}) = DictArray(Dictionary(keys(d), values(d)))
@@ -55,7 +55,7 @@ Base.axes(da::DictArray, args...) = axes(first(Dictionary(da)), args...)
 Base.valtype(::Type{<:DictArray}) = Dictionary{Symbol}
 Base.valtype(::DictArray) = Dictionary{Symbol}
 Base.eltype(::Type{<:DictArray}) = Dictionary{Symbol}
-Base.getindex(da::DictArray, I::Integer...) = map(a -> a[I...], Dictionary(da))
+Base.getindex(da::DictArray, I::Union{Integer,CartesianIndex}...) = map(a -> a[I...], Dictionary(da))
 Base.getindex(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> a[I], Dictionary(da) |> Elements())
 Base.view(da::DictArray, I::Integer...) = map(a -> view(a, I...), Dictionary(da))
 Base.view(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> view(a, I), Dictionary(da) |> Elements())
@@ -78,7 +78,7 @@ Dictionaries.Dictionary(da::DictArray) = getfield(da, :dct)
 Base.Dict(da::DictArray) = Dict(pairs(Dictionary(da)))
 Base.NamedTuple(da::DictArray) = (; pairs(Dictionary(da))...)
 StructArrays.StructArray(da::DictArray) = da[Cols(keys(Dictionary(da))...)]
-Base.collect(da::DictArray) = map(i -> da[i], 1:length(da))
+Base.collect(da::DictArray)::AbstractArray{Dictionary{Symbol}} = map(i -> da[i], keys(da))
 
 Base.merge(da::DictArray, args::AbstractDictionary...) = DictArray(merge(Dictionary(da), args...))
 Base.merge(da::DictArray, args...) = merge(da, map(Dictionary, args)...)
