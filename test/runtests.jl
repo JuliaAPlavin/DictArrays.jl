@@ -205,11 +205,11 @@ end
         # group() not supported yet
 
         G = groupview((@optic _.a), da)
-        @test G isa Dictionary{Int, DictArray}
+        @test G isa Dictionary{Int, <:DictArray}
         @test G[1] == DictArray(a=[1], b=[1.0])
 
         G = groupview((@optic isodd(_.a)), da)
-        @test G isa AbstractDictionary{Bool, DictArray}
+        @test G isa AbstractDictionary{Bool, <:DictArray}
         @test G[true] == DictArray(a=[1, 3], b=[1.0, 3.0])
         @test addmargins(G)[total] == DictArray(a=[1, 3, 2], b=[1.0, 3.0, 2.0])
 

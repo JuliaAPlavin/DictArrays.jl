@@ -45,6 +45,8 @@ FlexiMaps.mapview(f, v::VectorParted) = @modify(v.parts) do ps
     map(p -> mapview(f, p), ps)
 end
 
+_any_element(v::VectorParted) = first(first(v.parts))
+
 
 struct DictionaryParted{I,T,VT<:VectorParted{T}} <: AbstractDictionary{I,T}
     indices::Indices{I}
@@ -66,6 +68,8 @@ Dictionaries.gettokenvalue(dict::DictionaryParted, index::Int) = _values(dict)[i
 Base.map(f, d::DictionaryParted) = @modify(vs -> map(f, vs), _values(d))
 FlexiMaps.mapview(f, d::DictionaryParted) = @modify(vs -> mapview(f, vs), _values(d))
 
+_any_element(d::DictionaryParted) = _any_element(_values(d))
+
 
 # https://github.com/andyferris/Dictionaries.jl/pull/43
 Base.propertynames(d::AbstractDictionary) = keys(d)
@@ -78,13 +82,13 @@ end
 ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = merge(obj, Dictionary(keys(patch), values(patch)))
 
 
-struct DictArray
-    dct::DictionaryParted{Symbol}
+struct DictArray{T,VT}
+    dct::DictionaryParted{Symbol,T,VT}
 
     # so that we don't have DictArray(::Any) that gets overriden below
-    function DictArray(dct::DictionaryParted{Symbol})
-        @assert allequal(mapview(axes, dct))
-        new(dct)
+    function DictArray(dct::DictionaryParted{Symbol,T,VT}) where {T,VT}
+        @assert all(isequal(axes(_any_element(dct))) ∘ axes, dct)
+        new{T,VT}(dct)
     end
 end
 
@@ -106,9 +110,9 @@ DictArray(tbl) = @p let
 end
 
 for f in (:isempty, :length, :size, :firstindex, :lastindex, :eachindex, :keys, :keytype)
-    @eval Base.$f(da::DictArray) = $f(first(AbstractDictionary(da)))
+    @eval Base.$f(da::DictArray) = $f(_any_element(AbstractDictionary(da)))
 end
-Base.axes(da::DictArray, args...) = axes(first(AbstractDictionary(da)), args...)
+Base.axes(da::DictArray, args...) = axes(_any_element(AbstractDictionary(da)), args...)
 Base.valtype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
 Base.valtype(::DictArray) = AbstractDictionary{Symbol}
 Base.eltype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
@@ -118,7 +122,7 @@ Base.@propagate_inbounds function Base.getindex(da::DictArray, I::Union{Integer,
 end
 Base.@propagate_inbounds function Base.getindex(da::DictArray, I::AbstractVector{<:Integer})
     @boundscheck checkbounds(Bool, da, I)
-    @modify(a -> @inbounds(a[I]), AbstractDictionary(da) |> Elements())
+    @modify(dct -> map(a -> @inbounds(a[I]), dct), AbstractDictionary(da))
 end
 Base.@propagate_inbounds function Base.view(da::DictArray, I::Integer...)
     @boundscheck checkbounds(Bool, da, I...)
@@ -126,10 +130,10 @@ Base.@propagate_inbounds function Base.view(da::DictArray, I::Integer...)
 end
 Base.@propagate_inbounds function Base.view(da::DictArray, I::AbstractVector{<:Integer})
     @boundscheck checkbounds(Bool, da, I)
-    @modify(a -> @inbounds(view(a, I)), AbstractDictionary(da) |> Elements())
+    @modify(dct -> map(a -> @inbounds(view(a, I)), dct), AbstractDictionary(da))
 end
 
-Base.checkbounds(::Type{Bool}, da::DictArray, I...) = checkbounds(Bool, first(AbstractDictionary(da)), I...)
+Base.checkbounds(::Type{Bool}, da::DictArray, I...) = checkbounds(Bool, _any_element(AbstractDictionary(da)), I...)
 Base.first(da::DictArray) = map(first, AbstractDictionary(da))
 Base.last(da::DictArray) = map(last, AbstractDictionary(da))
 Base.values(da::DictArray) = da
