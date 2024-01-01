@@ -66,6 +66,10 @@ julia> Tables.rowtable(da)
  (a = 7, b = 8, c = 9)
 ```
 
+Column selection:
+- `da[Cols(:a, :b, :c)]::StructArray` _(varargs or tuple of columns)_ selects these columns and converts to a `StructArray` of `NamedTuple`s
+- `da[Cols([:a, :b, :c])]::DictArray` _(array of columns)_ selects these columns and keeps it a `DictArray`
+
 ## More
 
 Conversion:
