@@ -18,9 +18,9 @@ using TestItemRunner
         ]	
     end)
     da = DictArray(coldict)
-    @test Dictionary(da) == coldict
+    @test AbstractDictionary(da) == coldict
     @test Dict(da)[:a1] === coldict[:a1]
-    @test Dictionary(DictArray(Dict(da)))[:a1] === coldict[:a1]
+    @test AbstractDictionary(DictArray(Dict(da)))[:a1] === coldict[:a1]
 
     @test eltype(AbstractDictionary(da)) == Union{StepRangeLen{Int64, Int64, Int64, Int64}, Vector{Int64}, Vector{String}}
     @test da.a1 === 1 .* (1:Nrow)
@@ -248,7 +248,7 @@ end
         @insert __.x = __.c5
     end
     @test das.a2 === das.a1 === da.a1
-    @test !haskey(Dictionary(das), :b10)
+    @test !haskey(AbstractDictionary(das), :b10)
     @test das.x === das.c5
 
     das = @modify(c -> c .* 100, da |> Properties() |> If(c -> eltype(c) <: Number))
