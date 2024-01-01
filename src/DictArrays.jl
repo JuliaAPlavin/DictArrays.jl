@@ -70,17 +70,14 @@ Base.@propagate_inbounds function Base.getindex(da::DictArray, I::AbstractVector
     @boundscheck checkbounds(da, I)
     @modify(dct -> map(a -> @inbounds(a[I]), dct), AbstractDictionary(da))
 end
-Base.@propagate_inbounds function Base.view(da::DictArray, I::Integer...)
-    @boundscheck checkbounds(da, I...)
-    map(a -> @inbounds(view(a, I...)), AbstractDictionary(da))
-end
-Base.@propagate_inbounds function Base.view(da::DictArray, I::AbstractVector{<:Integer})
+Base.@propagate_inbounds function Base.view(da::DictArray, I)
     @boundscheck checkbounds(da, I)
     @modify(dct -> map(a -> @inbounds(view(a, I)), dct), AbstractDictionary(da))
 end
 
 Base.checkbounds(::Type{Bool}, da::DictArray, I...) = checkbounds(Bool, any_element(AbstractDictionary(da)), I...)
 Base.checkbounds(da::DictArray, I...) = checkbounds(any_element(AbstractDictionary(da)), I...)
+Base.only(da::DictArray) = map(only, AbstractDictionary(da))
 Base.first(da::DictArray) = map(first, AbstractDictionary(da))
 Base.last(da::DictArray) = map(last, AbstractDictionary(da))
 Base.values(da::DictArray) = da
@@ -194,10 +191,10 @@ Tables.schema(da::DictArray) = Tables.Schema(collect(keys(AbstractDictionary(da)
 ## fast-path for map(), and support for mapview():
 
 Base.map(f::PropertyLens, da::DictArray) = map(identity, f(da))
-Base.map(f::IndexLens{Tuple{Symbol}}, da::DictArray) = map(identity, f(Dictionary(da)))
+Base.map(f::IndexLens{Tuple{Symbol}}, da::DictArray) = map(identity, f(AbstractDictionary(da)))
 function Base.map(f::ComposedFunction, da::DictArray)
-    fs = Accessors.decompose(f)
-    map(Accessors.compose(Base.front(fs)...), mapview(last(fs), da))
+    fs = decompose(f)
+    map(compose(Base.front(fs)...), mapview(last(fs), da))
 end
 
 FlexiMaps.mapview(f::PropertyLens, da::DictArray) = f(da)

@@ -92,7 +92,7 @@ end
     @test !isempty(da)
     @test length(da) == 3
     @test size(da) == (3,)
-    @test valtype(da) == eltype(da) == AbstractDictionary{Symbol}
+    @test valtype(typeof(da)) == valtype(da) == eltype(typeof(da)) == eltype(da) == AbstractDictionary{Symbol}
     @test keytype(da) == Int
     @test collect(da)::Vector{<:AbstractDictionary{Symbol}} == [Dictionary([:a, :b], [1, 1.0]), Dictionary([:a, :b], [2, 2.0]), Dictionary([:a, :b], [3, 3.0])]
     @test da[2] == Dictionary([:a, :b], [2, 2.0])
@@ -117,6 +117,8 @@ end
     @test dai.a === 1:2
     @test dai.b::SubArray == [1.0, 2.0]
     @test length(dai) == 2
+
+    @test only(@view da[1]) == da[1]
 
     @test (NamedTuple(da)::NamedTuple).a === da.a
     @test DictArray(NamedTuple(da)) == da
@@ -193,12 +195,17 @@ end
         @test_broken flatmap(r -> 1:r.a, da)
     end
 
-    @testset "mapview" begin
+    @testset "map, mapview" begin
         @test_broken mapview(r -> r.a, da) == [1, 2, 3]
         @test mapview(r -> r.a, da) |> collect == [1, 2, 3]
         @test mapview((@optic _.a), da) === da.a == [1, 2, 3]
         @test mapview((@optic _[:b]), da) === da.b == [1., 2, 3]
         @test mapview((@optic _.a ^ 2), da)::MappedArray{Int} == [1, 4, 9]
+
+        # these are Base tests, not FlexiMaps - but putting here because similar to the above
+        @test [1, 2, 3] == map((@optic _.a), da) !== da.a
+        @test [1., 2, 3] == map((@optic _[:b]), da) !== da.b
+        @test map((@optic _.a ^ 2), da)::Vector{Int} == [1, 4, 9]
     end
 
     @testset "group" begin
@@ -285,7 +292,7 @@ end
 @testitem "_" begin
     import Aqua
     Aqua.test_all(DictArrays; ambiguities=false)
-    Aqua.test_ambiguities(DictArrays)
+    # Aqua.test_ambiguities(DictArrays)  # ambiguity with piracy from Indexing.jl
 
     import CompatHelperLocal as CHL
     CHL.@check()
