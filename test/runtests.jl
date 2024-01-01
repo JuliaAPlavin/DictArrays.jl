@@ -302,6 +302,22 @@ end
     @test Tables.rowcount(da) == 3
 end
 
+@testitem "metadata" begin
+    using MetadataArrays
+    import DictArrays: metadata, metadatasupport, colmetadatasupport
+
+    # XXX: should be in MetadataArrays
+    metadata(ma::MetadataArray) = MetadataArrays.metadata(ma)
+    metadatasupport(::Type{<:MetadataArray}) = (read=true, write=false)
+
+    da = DictArray(a=1:3, b=MetadataArray([5, 6, 7], (xmeta="abc", ymeta=:def)))
+    @test da.a === 1:3
+    @test colmetadatasupport(typeof(da)).read
+    @test metadata(da.b) == (xmeta="abc", ymeta=:def)
+    @test colmetadata(da, :b) == metadata(da.b)
+    @test colmetadata(da)[:b] == metadata(da.b)
+end
+
 
 @testitem "_" begin
     import Aqua

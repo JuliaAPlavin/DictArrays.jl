@@ -4,6 +4,7 @@ using Dictionaries
 using Indexing: getindices
 using StructArrays
 using DataAPI: Cols
+import DataAPI: colmetadata, metadata, metadatasupport, colmetadatasupport
 using ConstructionBase
 using CompositionsBase: compose, decompose
 using Accessors
@@ -12,7 +13,7 @@ using Tables
 using FlexiMaps
 using UnionCollections: any_element
 
-export DictArray, Cols
+export DictArray, Cols, colmetadata
 
 
 struct DictArray{DT<:AbstractDictionary{Symbol}}
@@ -176,6 +177,12 @@ Tables.columnaccess(::Type{<:DictArray}) = true
 @accessor Tables.columns(da::DictArray) = AbstractDictionary(da)
 Tables.schema(da::DictArray) = Tables.Schema(collect(keys(AbstractDictionary(da))), collect(map(eltype, AbstractDictionary(da))))
 
+colmetadatasupport(::Type{<:DictArray}) = (read=true, write=false)
+colmetadata(da::DictArray, col::Symbol) = metadata(getproperty(da, col))
+colmetadata(da::DictArray) =
+    map(Tables.columns(da)) do col
+        metadatasupport(typeof(col)).read ? metadata(col) : nothing
+    end
 
 ## fast-path for map(), and support for mapview():
 
