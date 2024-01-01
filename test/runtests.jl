@@ -79,7 +79,9 @@ end
     @test da.c isa StructArray
     @test da.c.d === 1:3
 
-    @test_broken da == DictArray(a=1:3, b=collect(1.0:3.0), c=DictArray(d=1:3, e=collect(1.0:3.0)))
+    da = DictArray(a=1:3, b=collect(1.0:3.0), c=DictArray(d=1:3, e=collect(1.0:3.0)))
+    @test da.c isa DictArray
+    @test da.c.d === 1:3
 end
 
 @testitem "collection interface - 1d" begin

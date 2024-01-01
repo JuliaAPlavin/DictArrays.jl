@@ -24,10 +24,10 @@ ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = mer
 
 
 struct DictArray
-    dct::Dictionary{Symbol, <:AbstractArray}
+    dct::Dictionary{Symbol}
 
     # so that we don't have DictArray(::Any) that gets overriden below
-    function DictArray(dct::Dictionary{Symbol, <:AbstractArray})
+    function DictArray(dct::Dictionary{Symbol})
         @assert allequal(map(axes, dct))
         new(dct)
     end
@@ -36,7 +36,7 @@ end
 DictArray(d::AbstractDictionary) = @p let
     Dictionary(keys(d), values(d))
     map(convert(AbstractArray, _))
-    @aside @assert __ isa Dictionary{Symbol, <:AbstractArray}
+    @aside @assert __ isa Dictionary{Symbol}
     DictArray()
 end
 DictArray(d::Union{AbstractDict,NamedTuple}) = DictArray(Dictionary(keys(d), values(d)))
