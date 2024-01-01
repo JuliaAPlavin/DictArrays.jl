@@ -18,7 +18,7 @@ using TestItemRunner
         ]	
     end)
     da = DictArray(coldict)
-    @test Dictionary(da) === coldict
+    @test Dictionary(da) == coldict
     @test Dict(da)[:a1] === coldict[:a1]
     @test Dictionary(DictArray(Dict(da)))[:a1] === coldict[:a1]
 
@@ -35,7 +35,7 @@ using TestItemRunner
     @test sa1[12] === (a1=12, b10="str_$(10*12)", c30=30*12)
     @test sa1.a1 == da.a1
 
-    @test da[12] isa Dictionary
+    @test da[12] isa AbstractDictionary
     @test da[12].a10 == 10*12
     @test da[12].b40 == "str_$(40*12)"
     @test first(da).c20 == 20

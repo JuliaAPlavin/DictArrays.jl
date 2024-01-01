@@ -12,6 +12,53 @@ using Tables
 export DictArray, Cols
 
 
+struct VectorParted{T,PS<:Tuple} <: AbstractVector{T}
+    parts::PS
+    ix_to_partix::Vector{Tuple{Int,Int}}
+end
+VectorParted(parts, ix_to_partix) = VectorParted{Union{eltype.(parts)...}}(parts, ix_to_partix)
+VectorParted{T}(parts, ix_to_partix) where {T} = VectorParted{T,typeof(parts)}(parts, ix_to_partix)
+
+function _fromcontent(vals)
+    types = unique(map(typeof, vals)) |> Tuple
+    parts = map(T -> T[], types)
+    ix_to_partix = map(vals) do v
+        partix = findfirst(==(typeof(v)), types)
+        push!(parts[partix], v)
+        (partix, lastindex(parts[partix]))
+    end |> collect
+    return VectorParted{Any}(parts, ix_to_partix)
+end
+
+function Base.getindex(v::VectorParted, I::Int...)
+    partix, ix_in_part = v.ix_to_partix[I...]
+    return v.parts[partix][ix_in_part]
+end
+
+Base.size(v::VectorParted) = size(v.ix_to_partix)
+Base.map(f, v::VectorParted) = @modify(f, v.parts |> Elements() |> Elements())
+
+
+struct DictionaryParted{I,T,VT<:VectorParted{T}} <: AbstractDictionary{I,T}
+    indices::Indices{I}
+    values::VT
+end
+
+DictionaryParted(indices, values) = DictionaryParted(Indices(indices), _fromcontent(values))
+DictionaryParted(dict::AbstractDictionary) = DictionaryParted(keys(dict), values(dict))
+
+Base.keys(dict::DictionaryParted) = getfield(dict, :indices)
+_values(dict::DictionaryParted) = getfield(dict, :values)
+Accessors.set(dict::DictionaryParted, ::typeof(_values), values) = DictionaryParted(keys(dict), values)
+Dictionaries.tokenized(dict::DictionaryParted) = _values(dict)
+Dictionaries.istokenassigned(dict::DictionaryParted, (_slot, index)) = isassigned(_values(dict), index)
+Dictionaries.istokenassigned(dict::DictionaryParted, index::Int) = isassigned(_values(dict), index)
+Dictionaries.gettokenvalue(dict::DictionaryParted, (_slot, index)) = _values(dict)[index]
+Dictionaries.gettokenvalue(dict::DictionaryParted, index::Int) = _values(dict)[index]
+
+Base.map(f, d::DictionaryParted) = @modify(f, _values(d) |> Elements())
+
+
 # https://github.com/andyferris/Dictionaries.jl/pull/43
 Base.propertynames(d::AbstractDictionary) = keys(d)
 Base.@propagate_inbounds Base.getproperty(d::D, s::Symbol) where {D<:AbstractDictionary} = hasfield(D, s) ? getfield(d, s) : d[s]
@@ -24,27 +71,29 @@ ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = mer
 
 
 struct DictArray
-    dct::AbstractDictionary{Symbol}
+    dct::DictionaryParted{Symbol}
 
     # so that we don't have DictArray(::Any) that gets overriden below
-    function DictArray(dct::AbstractDictionary{Symbol})
+    function DictArray(dct::DictionaryParted{Symbol})
         @assert allequal(map(axes, dct))
         new(dct)
     end
 end
 
 DictArray(d::AbstractDictionary) = @p let
+    d
     map(convert(AbstractArray, _))
     @aside @assert __ isa AbstractDictionary{Symbol}
+    DictionaryParted()
     DictArray()
 end
-DictArray(d::AbstractDict) = DictArray(Dictionary(keys(d), values(d)))
-DictArray(d::NamedTuple) = DictArray(Dictionary(keys(d), values(d)))
+DictArray(d::AbstractDict) = DictArray(DictionaryParted(keys(d), values(d)))
+DictArray(d::NamedTuple) = DictArray(DictionaryParted(keys(d), values(d)))
 DictArray(; kwargs...) = DictArray(values(kwargs))
 DictArray(tbl) = @p let
     tbl
     Tables.dictcolumntable()
-    Dictionary(Tables.columnnames(__), Tables.columns(__))
+    DictionaryParted(Tables.columnnames(__), Tables.columns(__))
     DictArray()
 end
 
@@ -89,7 +138,7 @@ Base.getindex(da::DictArray, i::Cols{<:Tuple{AbstractVector{Symbol}}}) = DictArr
 Base.getindex(da::DictArray, i::Cols) = error("Not supported")
 
 Dictionaries.AbstractDictionary(da::DictArray) = getfield(da, :dct)
-Dictionaries.Dictionary(da::DictArray) = AbstractDictionary(da)::Dictionary
+Dictionaries.Dictionary(da::DictArray) = Dictionary(AbstractDictionary(da))
 Base.Dict(da::DictArray) = Dict(pairs(AbstractDictionary(da)))
 Base.NamedTuple(da::DictArray) = (; pairs(AbstractDictionary(da))...)
 StructArrays.StructArray(da::DictArray) = da[Cols(keys(AbstractDictionary(da))...)]
