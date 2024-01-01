@@ -91,9 +91,9 @@ end
     @test !isempty(da)
     @test length(da) == 3
     @test size(da) == (3,)
-    @test valtype(da) == eltype(da) == Dictionary{Symbol}
+    @test valtype(da) == eltype(da) == AbstractDictionary{Symbol}
     @test keytype(da) == Int
-    @test collect(da)::Vector{<:Dictionary{Symbol}} == [Dictionary([:a, :b], [1, 1.0]), Dictionary([:a, :b], [2, 2.0]), Dictionary([:a, :b], [3, 3.0])]
+    @test collect(da)::Vector{<:AbstractDictionary{Symbol}} == [Dictionary([:a, :b], [1, 1.0]), Dictionary([:a, :b], [2, 2.0]), Dictionary([:a, :b], [3, 3.0])]
     @test da[2] == Dictionary([:a, :b], [2, 2.0])
     @test first(da) == Dictionary([:a, :b], [1, 1.0])
     @test lastindex(da) == 3
@@ -109,7 +109,7 @@ end
     dai = da[1:0]
     @test dai isa DictArray
     @test isempty(dai)
-    @test collect(dai)::Vector{<:Dictionary{Symbol}} == []
+    @test collect(dai)::Vector{<:AbstractDictionary{Symbol}} == []
 
     dai = @view da[1:2]
     @test dai isa DictArray
@@ -132,9 +132,9 @@ end
     @test !isempty(da)
     @test length(da) == 6
     @test size(da) == (2, 3)
-    @test valtype(da) == eltype(da) == Dictionary{Symbol}
+    @test valtype(da) == eltype(da) == AbstractDictionary{Symbol}
     @test keytype(da) == CartesianIndex{2}
-    @test (collect(da)::Matrix{<:Dictionary{Symbol}})[2, 3] == Dictionary([:a, :b], [6, 6.0])
+    @test (collect(da)::Matrix{<:AbstractDictionary{Symbol}})[2, 3] == Dictionary([:a, :b], [6, 6.0])
     @test da[2] == Dictionary([:a, :b], [2, 2.0])
     @test first(da) == Dictionary([:a, :b], [1, 1.0])
     @test lastindex(da) == 6
@@ -152,7 +152,7 @@ end
     dai = da[1:0]
     @test dai isa DictArray
     @test isempty(dai)
-    @test collect(dai)::Vector{<:Dictionary{Symbol}} == []
+    @test collect(dai)::Vector{<:AbstractDictionary{Symbol}} == []
 
     dai = @view da[1:2]
     @test dai isa DictArray

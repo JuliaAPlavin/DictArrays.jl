@@ -24,22 +24,22 @@ ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = mer
 
 
 struct DictArray
-    dct::Dictionary{Symbol}
+    dct::AbstractDictionary{Symbol}
 
     # so that we don't have DictArray(::Any) that gets overriden below
-    function DictArray(dct::Dictionary{Symbol})
+    function DictArray(dct::AbstractDictionary{Symbol})
         @assert allequal(map(axes, dct))
         new(dct)
     end
 end
 
 DictArray(d::AbstractDictionary) = @p let
-    Dictionary(keys(d), values(d))
     map(convert(AbstractArray, _))
-    @aside @assert __ isa Dictionary{Symbol}
+    @aside @assert __ isa AbstractDictionary{Symbol}
     DictArray()
 end
-DictArray(d::Union{AbstractDict,NamedTuple}) = DictArray(Dictionary(keys(d), values(d)))
+DictArray(d::AbstractDict) = DictArray(Dictionary(keys(d), values(d)))
+DictArray(d::NamedTuple) = DictArray(Dictionary(keys(d), values(d)))
 DictArray(; kwargs...) = DictArray(values(kwargs))
 DictArray(tbl) = @p let
     tbl
@@ -49,55 +49,56 @@ DictArray(tbl) = @p let
 end
 
 for f in (:isempty, :length, :size, :firstindex, :lastindex, :eachindex, :keys, :keytype)
-    @eval Base.$f(da::DictArray) = $f(first(Dictionary(da)))
+    @eval Base.$f(da::DictArray) = $f(first(AbstractDictionary(da)))
 end
-Base.axes(da::DictArray, args...) = axes(first(Dictionary(da)), args...)
-Base.valtype(::Type{<:DictArray}) = Dictionary{Symbol}
-Base.valtype(::DictArray) = Dictionary{Symbol}
-Base.eltype(::Type{<:DictArray}) = Dictionary{Symbol}
-Base.getindex(da::DictArray, I::Union{Integer,CartesianIndex}...) = map(a -> a[I...], Dictionary(da))
-Base.getindex(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> a[I], Dictionary(da) |> Elements())
-Base.view(da::DictArray, I::Integer...) = map(a -> view(a, I...), Dictionary(da))
-Base.view(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> view(a, I), Dictionary(da) |> Elements())
-Base.first(da::DictArray) = map(first, Dictionary(da))
-Base.last(da::DictArray) = map(last, Dictionary(da))
+Base.axes(da::DictArray, args...) = axes(first(AbstractDictionary(da)), args...)
+Base.valtype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
+Base.valtype(::DictArray) = AbstractDictionary{Symbol}
+Base.eltype(::Type{<:DictArray}) = AbstractDictionary{Symbol}
+Base.getindex(da::DictArray, I::Union{Integer,CartesianIndex}...) = map(a -> a[I...], AbstractDictionary(da))
+Base.getindex(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> a[I], AbstractDictionary(da) |> Elements())
+Base.view(da::DictArray, I::Integer...) = map(a -> view(a, I...), AbstractDictionary(da))
+Base.view(da::DictArray, I::AbstractVector{<:Integer}) = @modify(a -> view(a, I), AbstractDictionary(da) |> Elements())
+Base.first(da::DictArray) = map(first, AbstractDictionary(da))
+Base.last(da::DictArray) = map(last, AbstractDictionary(da))
 Base.values(da::DictArray) = da
 
 Base.similar(da::DictArray, ::Type{T}) where {T} = similar(Array{T}, axes(da))
-Base.similar(da::DictArray, ::Type{<:Union{Dict,Dictionary}}) = error("Reserved: what exactly this should mean?")
-Base.copy(da::DictArray) = @modify(copy, Dictionary(da) |> Elements())
+Base.similar(da::DictArray, ::Type{<:Union{NamedTuple,AbstractDict,AbstractDictionary}}) = error("Reserved: what exactly this should mean?")
+Base.copy(da::DictArray) = @modify(copy, AbstractDictionary(da) |> Elements())
 
 function Base.append!(a::DictArray, b::DictArray)
     @assert propertynames(a) == propertynames(b)
     for k in propertynames(a)
-        append!(Dictionary(a)[k], Dictionary(b)[k])
+        append!(AbstractDictionary(a)[k], AbstractDictionary(b)[k])
     end
     return a
 end
 
 Base.iterate(::DictArray) = error("Iteration deliberately not supported to avoid triggering fallbacks that perform poorly for type-unstable DictArrays.")
 
-Base.propertynames(da::DictArray) = collect(keys(Dictionary(da)))
-Base.getproperty(da::DictArray, i::Symbol) = Dictionary(da)[i]
+Base.propertynames(da::DictArray) = collect(keys(AbstractDictionary(da)))
+Base.getproperty(da::DictArray, i::Symbol) = getproperty(AbstractDictionary(da), i)
 function Base.getindex(da::DictArray, i::Cols{<:Tuple{Vararg{Symbol}}})
     cspec = NamedTuple{i.cols}(i.cols)
-    cols = getindices(Dictionary(da), cspec)::NamedTuple
+    cols = getindices(AbstractDictionary(da), cspec)::NamedTuple
     StructArray(cols)
 end
 Base.getindex(da::DictArray, i::Cols{<:Tuple{Tuple{Vararg{Symbol}}}}) = da[Cols(only(i.cols)...)]
-Base.getindex(da::DictArray, i::Cols{<:Tuple{AbstractVector{Symbol}}}) = DictArray(getindices(Dictionary(da), Indices(only(i.cols))))
+Base.getindex(da::DictArray, i::Cols{<:Tuple{AbstractVector{Symbol}}}) = DictArray(getindices(AbstractDictionary(da), Indices(only(i.cols))))
 Base.getindex(da::DictArray, i::Cols) = error("Not supported")
 
-Dictionaries.Dictionary(da::DictArray) = getfield(da, :dct)
-Base.Dict(da::DictArray) = Dict(pairs(Dictionary(da)))
-Base.NamedTuple(da::DictArray) = (; pairs(Dictionary(da))...)
-StructArrays.StructArray(da::DictArray) = da[Cols(keys(Dictionary(da))...)]
-Base.collect(da::DictArray)::AbstractArray{Dictionary{Symbol}} = map(i -> da[i], keys(da))
+Dictionaries.AbstractDictionary(da::DictArray) = getfield(da, :dct)
+Dictionaries.Dictionary(da::DictArray) = AbstractDictionary(da)::Dictionary
+Base.Dict(da::DictArray) = Dict(pairs(AbstractDictionary(da)))
+Base.NamedTuple(da::DictArray) = (; pairs(AbstractDictionary(da))...)
+StructArrays.StructArray(da::DictArray) = da[Cols(keys(AbstractDictionary(da))...)]
+Base.collect(da::DictArray)::AbstractArray{AbstractDictionary{Symbol}} = map(i -> da[i], keys(da))
 
-Base.merge(da::DictArray, args::AbstractDictionary...) = DictArray(merge(Dictionary(da), args...))
+Base.merge(da::DictArray, args::AbstractDictionary...) = DictArray(merge(AbstractDictionary(da), args...))
 Base.merge(da::DictArray, args...) = merge(da, map(Dictionary, args)...)
 
-Base.:(==)(a::DictArray, b::DictArray) = Dictionary(a) == Dictionary(b)
+Base.:(==)(a::DictArray, b::DictArray) = AbstractDictionary(a) == AbstractDictionary(b)
 
 Base.filter(f, da::DictArray) = da[map(f, da)]
 
@@ -120,7 +121,7 @@ end
 
 
 struct TracedKeys
-    dct::Dictionary{Symbol, <:Any}
+    dct::AbstractDictionary{Symbol, <:Any}
     accessed::Vector{Symbol}
 end
 
@@ -142,14 +143,14 @@ Base.merge(nt::NamedTuple, t::TracedKeys) = merge(nt, t[Tuple(keys(_dct(t)))])
 
 
 ConstructionBase.setproperties(da::DictArray, patch::NamedTuple) = merge(da, patch)
-Accessors.set(da::DictArray, ::Type{Dictionary}, val::Dictionary) = DictArray(val)
-Accessors.delete(da::DictArray, ::PropertyLens{P}) where {P} = @delete Dictionary(da)[P]
-Accessors.insert(da::DictArray, ::PropertyLens{P}, val) where {P} = @insert Dictionary(da)[P] = val
-Accessors.mapproperties(f, da::DictArray) = @modify(f, Dictionary(da) |> Elements())
+Accessors.set(da::DictArray, ::Type{AbstractDictionary}, val::AbstractDictionary) = DictArray(val)
+Accessors.delete(da::DictArray, ::PropertyLens{P}) where {P} = @delete AbstractDictionary(da)[P]
+Accessors.insert(da::DictArray, ::PropertyLens{P}, val) where {P} = @insert AbstractDictionary(da)[P] = val
+Accessors.mapproperties(f, da::DictArray) = @modify(f, AbstractDictionary(da) |> Elements())
 
-function Accessors.setindex(da::DictArray, val::Dictionary{Symbol}, I::Integer...)
-    @assert keys(Dictionary(da)) == keys(val)
-    @modify(Dictionary(da)) do cols
+function Accessors.setindex(da::DictArray, val::AbstractDictionary{Symbol}, I::Integer...)
+    @assert keys(AbstractDictionary(da)) == keys(val)
+    @modify(AbstractDictionary(da)) do cols
         map(cols, val) do col, v
             @set col[I...] = v
         end
@@ -160,6 +161,6 @@ end
 Tables.istable(::Type{<:DictArray}) = true
 Tables.columnaccess(::Type{<:DictArray}) = true
 Tables.columns(da::DictArray) = da
-Tables.schema(da::DictArray) = Tables.Schema(collect(keys(Dictionary(da))), collect(map(eltype, Dictionary(da))))
+Tables.schema(da::DictArray) = Tables.Schema(collect(keys(AbstractDictionary(da))), collect(map(eltype, AbstractDictionary(da))))
 
 end
