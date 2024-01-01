@@ -51,6 +51,7 @@ end
 for f in (:isempty, :length, :size, :firstindex, :lastindex, :eachindex, :keys, :keytype)
     @eval Base.$f(da::DictArray) = $f(first(Dictionary(da)))
 end
+Base.axes(da::DictArray, args...) = axes(first(Dictionary(da)), args...)
 Base.valtype(::Type{<:DictArray}) = Dictionary{Symbol}
 Base.valtype(::DictArray) = Dictionary{Symbol}
 Base.eltype(::Type{<:DictArray}) = Dictionary{Symbol}

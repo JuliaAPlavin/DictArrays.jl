@@ -70,6 +70,16 @@ using TestItemRunner
     @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=1*12+30*12)
 end
 
+@testitem "nested" begin
+    using StructArrays
+
+    da = DictArray(a=1:3, b=collect(1.0:3.0), c=StructArray(d=1:3, e=collect(1.0:3.0)))
+    @test da.c isa StructArray
+    @test da.c.d === 1:3
+
+    @test_broken da = DictArray(a=1:3, b=collect(1.0:3.0), c=DictArray(d=1:3, e=collect(1.0:3.0)))
+end
+
 @testitem "collection interface" begin
     using Dictionaries
 
