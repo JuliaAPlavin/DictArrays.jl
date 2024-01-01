@@ -93,11 +93,19 @@ end
 
 tracedkeys(dct) = TracedKeys(dct, [])
 _dct(t::TracedKeys) = getfield(t, :dct)
-_accessed(t::TracedKeys) = getfield(t, :accessed)
+_accessed(t::TracedKeys) = unique(__accessed(t))
+__accessed(t::TracedKeys) = getfield(t, :accessed)
 
 Base.getproperty(t::TracedKeys, i::Symbol) = t[i]
-Base.getindex(t::TracedKeys, i::Symbol) = (push!(_accessed(t), i); _dct(t)[i])
-Base.getindex(t::TracedKeys, i::Tuple{Vararg{Symbol}}) = (append!(_accessed(t), i); getindices(_dct(t), i))
+function Base.getindex(t::TracedKeys, i::Symbol)
+    push!(__accessed(t), i)
+    _dct(t)[i]
+end
+function Base.getindex(t::TracedKeys, i::Tuple{Vararg{Symbol}})
+    append!(__accessed(t), i)
+    NamedTuple{i}(getindices(_dct(t), i))
+end
+Base.merge(nt::NamedTuple, t::TracedKeys) = merge(nt, t[Tuple(keys(_dct(t)))])
 
 
 Tables.istable(::Type{<:DictArray}) = true

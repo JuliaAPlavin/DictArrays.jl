@@ -47,14 +47,27 @@ using TestItemRunner
     @test a isa Vector{String}
     @test a[12] == "str_$(3*12)"
 
-    @test first(map(r -> r[:a1] * r[:c9], da)::Vector{Int}) == 9
+    @test first(map(r -> r[:a1] * r[:c9] + r[:a1], da)::Vector{Int}) == 10
     
     sa = map(r -> r[(:a1, :b10, :c30)], da)
     @test sa isa StructArray
     @test isconcretetype(eltype(sa))
     @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12)
     @test sa.a1 == da.a1
-    @test sa.a1 !== da.a1
+    
+    sa = map(r -> (; a=r.a1, b=r.b10, c=r.c30), da)
+    @test sa[12] === (a=12, b="str_$(10*12)", c=30*12)
+
+    sa = map(r -> (; r[(:a1, :b10, :c30)]..., x=r.a3 + r.c5), da)
+    @test sa isa StructArray
+    @test isconcretetype(eltype(sa))
+    @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=3*12+5*12)
+
+    da1 = da[Cols([:a1, :b10, :c30])]::DictArray
+    sa = map(r -> (; r..., x=r.a1 + r.c30), da1)
+    @test sa isa StructArray
+    @test isconcretetype(eltype(sa))
+    @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=1*12+30*12)
 end
 
 @testitem "Tables" begin
