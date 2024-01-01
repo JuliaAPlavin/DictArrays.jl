@@ -63,6 +63,20 @@ Base.first(da::DictArray) = map(first, Dictionary(da))
 Base.last(da::DictArray) = map(last, Dictionary(da))
 Base.values(da::DictArray) = da
 
+Base.similar(da::DictArray, ::Type{T}) where {T} = similar(Array{T}, axes(da))
+Base.similar(da::DictArray, ::Type{<:Union{Dict,Dictionary}}) = error("Reserved: what exactly this should mean?")
+Base.copy(da::DictArray) = @modify(copy, Dictionary(da) |> Elements())
+
+function Base.append!(a::DictArray, b::DictArray)
+    @assert propertynames(a) == propertynames(b)
+    for k in propertynames(a)
+        append!(Dictionary(a)[k], Dictionary(b)[k])
+    end
+    return a
+end
+
+Base.iterate(::DictArray) = error("Iteration deliberately not supported to avoid triggering fallbacks that perform poorly for type-unstable DictArrays.")
+
 Base.propertynames(da::DictArray) = collect(keys(Dictionary(da)))
 Base.getproperty(da::DictArray, i::Symbol) = Dictionary(da)[i]
 function Base.getindex(da::DictArray, i::Cols{<:Tuple{Vararg{Symbol}}})

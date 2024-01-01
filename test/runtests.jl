@@ -170,14 +170,25 @@ end
     using FlexiMaps
     using FlexiMaps: MappedArray
     using FlexiGroups
-#     using FlexiJoins
+    using FlexiJoins
     using StructArrays
+    using Dictionaries
     using Accessors
 
-    da = DictArray(a=1:3, b=collect(1.0:3.0))
+    # non-resizeable arrays are broken now in eg flatten() - don't work
+    # da = DictArray(a=1:3, b=collect(1.0:3.0))
+    da = DictArray(a=[1, 2, 3], b=collect(1.0:3.0))
 
-    @test_broken filtermap(r -> r.a >= 2 ? (;r.a) : nothing, da)::StructArray == [(a=2,), (a=3,)]
-    @test_broken flatmap(r -> 1:r.a, da)
+    dafm = filtermap(r -> r.a >= 2 ? (;r.a) : nothing, da)
+    @test dafm == [(a=2,), (a=3,)]
+    @test_broken dafm isa StructArray
+
+    @testset "flatten" begin
+        @test isempty(flatten([da][1:0]))
+        @test flatten([da]) == da
+        @test flatten([da, da]) == DictArray(a=[1, 2, 3, 1, 2, 3], b=[1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
+        @test_broken flatmap(r -> 1:r.a, da)
+    end
 
     @testset "mapview" begin
         @test_broken mapview(r -> r.a, da) == [1, 2, 3]
@@ -187,10 +198,25 @@ end
         @test mapview((@optic _.a ^ 2), da)::MappedArray{Int} == [1, 4, 9]
     end
 
-    @test_broken group(r -> r.a, da)
-    @test_broken groupview(r -> r.a, da)
-    @test_broken groupmap(r -> r.a, length, da)
-    # @test_broken innerjoin((da, da), by_key(:a))
+    @testset "group" begin
+        # group() not supported yet
+
+        G = groupview((@optic _.a), da)
+        @test G isa Dictionary{Int, DictArray}
+        @test G[1] == DictArray(a=[1], b=[1.0])
+
+        G = groupview((@optic isodd(_.a)), da)
+        @test G isa AbstractDictionary{Bool, DictArray}
+        @test G[true] == DictArray(a=[1, 3], b=[1.0, 3.0])
+        @test addmargins(G)[total] == DictArray(a=[1, 3, 2], b=[1.0, 3.0, 2.0])
+
+        @test groupmap((@optic isodd(_.a)), length, da) == dictionary([true => 2, false => 1])
+        @test groupmap((@optic isodd(_.a)), first, da) == dictionary([true => Dictionary([:a, :b], [1, 1.0]), false => Dictionary([:a, :b], [2, 2.0])])
+    end
+
+    @testset "join" begin
+        @test_broken (innerjoin((da, da), by_key(:a)); true)
+    end
 end
 
 @testitem "Accessors" begin
