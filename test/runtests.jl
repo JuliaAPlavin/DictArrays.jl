@@ -7,6 +7,7 @@ using TestItemRunner
     using Dictionaries
     using FlexiMaps
     using StructArrays
+    using DictArrays.UnionCollections
 
     Nrow = 10^2
     Ncol = 10^3
@@ -18,57 +19,62 @@ using TestItemRunner
         ]	
     end)
     da = DictArray(coldict)
-    @test AbstractDictionary(da) == coldict
-    @test Dict(da)[:a1] === coldict[:a1]
-    @test AbstractDictionary(DictArray(Dict(da)))[:a1] === coldict[:a1]
+    dau = DictArray(coldict |> unioncollection)
+    @test eltype(AbstractDictionary(da)) == AbstractVector
+    @test eltype(AbstractDictionary(dau)) == Union{StepRangeLen{Int64, Int64, Int64, Int64}, Vector{Int64}, Vector{String}}
 
-    @test eltype(AbstractDictionary(da)) == Union{StepRangeLen{Int64, Int64, Int64, Int64}, Vector{Int64}, Vector{String}}
-    @test da.a1 === 1 .* (1:Nrow)
-    
-    da1 = da[Cols([:a1, :b10, :c30])]
-    @test da1 isa DictArray
-    @test da1[12] == dictionary([:a1=>12, :b10=>"str_$(10*12)", :c30=>30*12])
-    @test da1.a1 === da.a1
+    @testset for da in (da, dau)
+        @test AbstractDictionary(da) == coldict
+        @test Dict(da)[:a1] === coldict[:a1]
+        @test AbstractDictionary(DictArray(Dict(da)))[:a1] === coldict[:a1]
 
-    sa1 = da[Cols((:a1, :b10, :c30))]
-    @test sa1 isa StructArray
-    @test isconcretetype(eltype(sa1))
-    @test sa1[12] === (a1=12, b10="str_$(10*12)", c30=30*12)
-    @test sa1.a1 == da.a1
+        @test da.a1 === 1 .* (1:Nrow)
+        
+        da1 = da[Cols([:a1, :b10, :c30])]
+        @test da1 isa DictArray
+        @test da1[12] == dictionary([:a1=>12, :b10=>"str_$(10*12)", :c30=>30*12])
+        @test da1.a1 === da.a1
 
-    @test da[12] isa AbstractDictionary
-    @test da[12].a10 == 10*12
-    @test da[12].b40 == "str_$(40*12)"
-    @test first(da).c20 == 20
+        sa1 = da[Cols((:a1, :b10, :c30))]
+        @test sa1 isa StructArray
+        @test isconcretetype(eltype(sa1))
+        @test sa1[12] === (a1=12, b10="str_$(10*12)", c30=30*12)
+        @test sa1.a1 == da.a1
 
-    a = map(r -> r.a10, da)
-    @test a isa Vector{Int}
-    @test a[12] == 10*12
-    a = map(r -> r.a10 > 10 ? r.b3 : r.b38, da)
-    @test a isa Vector{String}
-    @test a[12] == "str_$(3*12)"
+        @test da[12] isa AbstractDictionary
+        @test da[12].a10 == 10*12
+        @test da[12].b40 == "str_$(40*12)"
+        @test first(da).c20 == 20
 
-    @test first(map(r -> r[:a1] * r[:c9] + r[:a1], da)::Vector{Int}) == 10
-    
-    sa = map(r -> r[(:a1, :b10, :c30)], da)
-    @test sa isa StructArray
-    @test isconcretetype(eltype(sa))
-    @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12)
-    @test sa.a1 == da.a1
-    
-    sa = map(r -> (; a=r.a1, b=r.b10, c=r.c30), da)
-    @test sa[12] === (a=12, b="str_$(10*12)", c=30*12)
+        a = map(r -> r.a10, da)
+        @test a isa Vector{Int}
+        @test a[12] == 10*12
+        a = map(r -> r.a10 > 10 ? r.b3 : r.b38, da)
+        @test a isa Vector{String}
+        @test a[12] == "str_$(3*12)"
 
-    sa = map(r -> (; r[(:a1, :b10, :c30)]..., x=r.a3 + r.c5), da)
-    @test sa isa StructArray
-    @test isconcretetype(eltype(sa))
-    @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=3*12+5*12)
+        @test first(map(r -> r[:a1] * r[:c9] + r[:a1], da)::Vector{Int}) == 10
+        
+        sa = map(r -> r[(:a1, :b10, :c30)], da)
+        @test sa isa StructArray
+        @test isconcretetype(eltype(sa))
+        @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12)
+        @test sa.a1 == da.a1
+        
+        sa = map(r -> (; a=r.a1, b=r.b10, c=r.c30), da)
+        @test sa[12] === (a=12, b="str_$(10*12)", c=30*12)
 
-    da1 = da[Cols([:a1, :b10, :c30])]::DictArray
-    sa = map(r -> (; r..., x=r.a1 + r.c30), da1)
-    @test sa isa StructArray
-    @test isconcretetype(eltype(sa))
-    @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=1*12+30*12)
+        sa = map(r -> (; r[(:a1, :b10, :c30)]..., x=r.a3 + r.c5), da)
+        @test sa isa StructArray
+        @test isconcretetype(eltype(sa))
+        @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=3*12+5*12)
+
+        da1 = da[Cols([:a1, :b10, :c30])]::DictArray
+        sa = map(r -> (; r..., x=r.a1 + r.c30), da1)
+        @test sa isa StructArray
+        @test isconcretetype(eltype(sa))
+        @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=1*12+30*12)
+    end
 
     @test_broken (DictArray(); true)  # what should empty constructor do?
 end

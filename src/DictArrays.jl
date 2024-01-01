@@ -18,13 +18,13 @@ export DictArray, Cols
 const UnionDictionary = Base.get_extension(UnionCollections, :DictionariesExt).UnionDictionary
 
 
-struct DictArray{T,VT}
-    dct::UnionDictionary{Symbol,T,VT}
+struct DictArray{DT<:AbstractDictionary{Symbol}}
+    dct::DT
 
     # so that we don't have DictArray(::Any) that gets overriden below
-    function DictArray(dct::UnionDictionary{Symbol,T,VT}) where {T,VT}
+    function DictArray(dct::AbstractDictionary{Symbol})
         @assert all(isequal(axes(any_element(dct))) ∘ axes, dct)
-        new{T,VT}(dct)
+        new{typeof(dct)}(dct)
     end
 end
 
@@ -32,10 +32,10 @@ DictArray(d::AbstractDictionary) = @p let
     d
     map(convert(AbstractArray, _))
     @aside @assert __ isa AbstractDictionary{Symbol}
-    UnionDictionary()
     DictArray()
 end
-DictArray(d::Union{AbstractDict,NamedTuple}) = DictArray(UnionDictionary(keys(d), values(d)))
+DictArray(d::AbstractDict) = DictArray(Dictionary(keys(d), values(d)))
+DictArray(d::NamedTuple) = DictArray(UnionDictionary(keys(d), values(d)))
 DictArray(; kwargs...) = DictArray(values(kwargs))
 DictArray(tbl) = @p let
     tbl
@@ -157,6 +157,7 @@ Base.merge(nt::NamedTuple, t::TracedKeys) = merge(nt, t[Tuple(keys(_dct(t)))])
 
 ConstructionBase.setproperties(da::DictArray, patch::NamedTuple) = merge(da, patch)
 Accessors.set(da::DictArray, ::Type{AbstractDictionary}, val::AbstractDictionary) = DictArray(val)
+Accessors.set(da::DictArray, ::Type{AbstractDictionary}, val) = error("Can only set AbstractDictionary(DictArray) to AbstractDictionary")
 Accessors.delete(da::DictArray, ::PropertyLens{P}) where {P} = @delete AbstractDictionary(da)[P]
 Accessors.insert(da::DictArray, ::PropertyLens{P}, val) where {P} = @insert AbstractDictionary(da)[P] = val
 Accessors.mapproperties(f, da::DictArray) = @modify(f, AbstractDictionary(da) |> Elements())
@@ -195,5 +196,12 @@ end
 
 # for flatten() to work:
 FlexiMaps._similar_with_content_sameeltype(da::DictArray) = copy(da)
+
+
+# piracy, see PR:
+# https://github.com/andyferris/Dictionaries.jl/pull/43
+Base.propertynames(d::AbstractDictionary) = keys(d)
+Base.@propagate_inbounds Base.getproperty(d::AbstractDictionary, s::Symbol) = hasfield(typeof(d), s) ? getfield(d, s) : d[s]
+ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = merge(obj, Dictionary(keys(patch), values(patch)))
 
 end
