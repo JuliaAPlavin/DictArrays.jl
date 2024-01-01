@@ -18,17 +18,6 @@ export DictArray, Cols
 const UnionDictionary = Base.get_extension(UnionCollections, :DictionariesExt).UnionDictionary
 
 
-# https://github.com/andyferris/Dictionaries.jl/pull/43
-Base.propertynames(d::AbstractDictionary) = keys(d)
-Base.@propagate_inbounds Base.getproperty(d::D, s::Symbol) where {D<:AbstractDictionary} = hasfield(D, s) ? getfield(d, s) : d[s]
-Base.@propagate_inbounds function Base.setproperty!(d::D, s::Symbol, x) where {D<:AbstractDictionary}
-    hasfield(D, s) && return setfield!(d, s, x)
-    d[s] = x
-    return x
-end
-ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = merge(obj, Dictionary(keys(patch), values(patch)))
-
-
 struct DictArray{T,VT}
     dct::UnionDictionary{Symbol,T,VT}
 
