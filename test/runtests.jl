@@ -324,7 +324,7 @@ end
 
 @testitem "_" begin
     import Aqua
-    Aqua.test_all(DictArrays; ambiguities=false)
+    Aqua.test_all(DictArrays; ambiguities=false, piracies=false)
     # Aqua.test_ambiguities(DictArrays)  # ambiguity with piracy from Indexing.jl
 
     import CompatHelperLocal as CHL

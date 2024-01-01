@@ -20,7 +20,7 @@ UnionCollections = "ea2a18ed-132b-4398-a457-2ce4804e5c00"
 [compat]
 Accessors = "0.1.28"
 AccessorsExtra = "0.1.48"
-Aqua = "0.6.0"
+Aqua = "0.8"
 CSV = "0.10.9"
 CompatHelperLocal = "0.1.25"
 DataPipes = "0.3.5"
