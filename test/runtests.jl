@@ -7,7 +7,7 @@ using TestItemRunner
     using Dictionaries
     using FlexiMaps
     using StructArrays
-    using DictArrays.UnionCollections
+    using UnionCollections
 
     Nrow = 10^2
     Ncol = 10^3

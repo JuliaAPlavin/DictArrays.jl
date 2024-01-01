@@ -10,12 +10,9 @@ using Accessors
 using DataPipes
 using Tables
 using FlexiMaps
-using UnionCollections
 using UnionCollections: any_element
 
 export DictArray, Cols
-
-const UnionDictionary = Base.get_extension(UnionCollections, :DictionariesExt).UnionDictionary
 
 
 struct DictArray{DT<:AbstractDictionary{Symbol}}
@@ -35,12 +32,12 @@ DictArray(d::AbstractDictionary) = @p let
     DictArray()
 end
 DictArray(d::AbstractDict) = DictArray(Dictionary(keys(d), values(d)))
-DictArray(d::NamedTuple) = DictArray(UnionDictionary(keys(d), values(d)))
+DictArray(d::NamedTuple) = DictArray(Dictionary(keys(d), values(d)))
 DictArray(; kwargs...) = DictArray(values(kwargs))
 DictArray(tbl) = @p let
     tbl
     Tables.dictcolumntable()
-    UnionDictionary(Tables.columnnames(__), Tables.columns(__))
+    Dictionary(Tables.columnnames(__), Tables.columns(__))
     DictArray()
 end
 
