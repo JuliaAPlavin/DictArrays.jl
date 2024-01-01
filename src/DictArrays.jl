@@ -4,6 +4,8 @@ using Dictionaries
 using Indexing: getindices
 using StructArrays
 using DataAPI: Cols
+using DataPipes
+using Tables
 
 export DictArray, Cols
 
@@ -18,12 +20,30 @@ end
 
 struct DictArray
     dct::Dictionary{Symbol, <:AbstractVector}
+
+    # so that we don't have DictArray(::Any) that gets overriden below
+    DictArray(dct::Dictionary{Symbol, <:AbstractVector}) = new(dct)
+end
+
+DictArray(d::AbstractDictionary) = @p let
+    Dictionary(keys(d), values(d))
+    map(convert(AbstractVector, _))
+    @aside @assert __ isa Dictionary{Symbol, <:AbstractVector}
+    DictArray()
+end
+DictArray(d::AbstractDict) = DictArray(Dictionary(keys(d), values(d)))
+DictArray(tbl) = @p let
+    tbl
+    Tables.dictcolumntable()
+    Dictionary(Tables.columnnames(__), Tables.columns(__))
+    DictArray()
 end
 
 Base.length(da::DictArray) = length(first(Dictionary(da)))
 Base.getindex(da::DictArray, i) = map(a -> a[i], Dictionary(da))
 Base.first(da::DictArray) = map(first, Dictionary(da))
 
+Base.propertynames(da::DictArray) = collect(keys(Dictionary(da)))
 Base.getproperty(da::DictArray, i::Symbol) = Dictionary(da)[i]
 function Base.getindex(da::DictArray, i::Cols{<:Tuple{Vararg{Symbol}}})
     ckeys = i.cols
@@ -34,8 +54,12 @@ Base.getindex(da::DictArray, i::Cols{<:Tuple{Tuple{Vararg{Symbol}}}}) = da[Cols(
 Base.getindex(da::DictArray, i::Cols{<:Tuple{AbstractVector{Symbol}}}) = DictArray(getindices(Dictionary(da), Indices(only(i.cols))))
 Base.getindex(da::DictArray, i::Cols) = error("Not supported")
 
-Dictionary(da::DictArray) = getfield(da, :dct)
+Dictionaries.Dictionary(da::DictArray) = getfield(da, :dct)
+Base.Dict(da::DictArray) = Dict(pairs(Dictionary(da)))
+StructArrays.StructArray(da::DictArray) = da[Cols(keys(Dictionary(da))...)]
 Base.collect(da::DictArray) = map(i -> da[i], 1:length(da))
+
+Base.:(==)(a::DictArray, b::DictArray) = Dictionary(a) == Dictionary(b)
 
 function Base.map(f, da::DictArray)
     t = tracedkeys(first(da))
@@ -74,5 +98,11 @@ _accessed(t::TracedKeys) = getfield(t, :accessed)
 Base.getproperty(t::TracedKeys, i::Symbol) = t[i]
 Base.getindex(t::TracedKeys, i::Symbol) = (push!(_accessed(t), i); _dct(t)[i])
 Base.getindex(t::TracedKeys, i::Tuple{Vararg{Symbol}}) = (append!(_accessed(t), i); getindices(_dct(t), i))
+
+
+Tables.istable(::Type{<:DictArray}) = true
+Tables.columnaccess(::Type{<:DictArray}) = true
+Tables.columns(da::DictArray) = da
+Tables.schema(da::DictArray) = Tables.Schema(collect(keys(Dictionary(da))), collect(map(eltype, Dictionary(da))))
 
 end

@@ -19,6 +19,8 @@ using TestItemRunner
     end)
     da = DictArray(coldict)
     @test Dictionary(da) === coldict
+    @test Dict(da)[:a1] === coldict[:a1]
+    @test Dictionary(DictArray(Dict(da)))[:a1] === coldict[:a1]
 
     @test da.a1 === 1 .* (1:Nrow)
     
@@ -53,6 +55,27 @@ using TestItemRunner
     @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12)
     @test sa.a1 == da.a1
     @test sa.a1 !== da.a1
+end
+
+@testitem "Tables" begin
+    using Tables
+    using CSV
+    using StructArrays
+
+    da = CSV.read(IOBuffer("a,b,c\n1,2,3\n4,5,6\n7,8,9\n"), DictArray)
+    @test da isa DictArray
+    @test da.a == [1, 4, 7]
+    sa = StructArray(da)
+    @test sa isa StructArray
+    @test isconcretetype(eltype(sa))
+    @test sa == [(a=1, b=2, c=3), (a=4, b=5, c=6), (a=7, b=8, c=9)]
+    @test sa === da[Cols((:a, :b, :c))]
+    das = DictArray(sa)
+    @test das == da
+    @test das.a === da.a
+
+    @test Tables.rowtable(da)::Vector == [(a=1, b=2, c=3), (a=4, b=5, c=6), (a=7, b=8, c=9)]
+    @test Tables.columntable(da) == (a=[1, 4, 7], b=[2, 5, 8], c=[3, 6, 9])
 end
 
 
