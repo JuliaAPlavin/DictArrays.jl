@@ -227,8 +227,4 @@ Base.propertynames(d::AbstractDictionary) = collect(keys(d))
 Base.@propagate_inbounds Base.getproperty(d::AbstractDictionary, s::Symbol) = hasfield(typeof(d), s) ? getfield(d, s) : d[s]
 ConstructionBase.setproperties(obj::AbstractDictionary, patch::NamedTuple) = merge(obj, Dictionary(keys(patch), values(patch)))
 
-
-# XXX: piracy, should upstream
-Accessors.set(sa::StructArray, ::typeof(Tables.columns), cols) = set(sa, StructArrays.components, cols)
-
 end
