@@ -46,6 +46,11 @@ using TestItemRunner
         @test sa1[12] === (a1=12, b10="str_$(10*12)", c30=30*12)
         @test sa1.a1 == da.a1
 
+        a2 = da[Cols(())]
+        @test a2 isa Vector
+        @test eltype(a2) == NamedTuple{(), Tuple{}}
+        @test a2[1] === (;)
+
         @test da[12] isa AbstractDictionary
         @test da[12].a10 == 10*12
         @test da[12].b40 == "str_$(40*12)"
@@ -79,6 +84,10 @@ using TestItemRunner
         @test sa isa StructArray
         @test isconcretetype(eltype(sa))
         @test sa[12] === (a1=12, b10="str_$(10*12)", c30=30*12, x=1*12+30*12)
+
+        @test map(_ -> nothing, da)::Vector{Nothing} == fill(nothing, length(da))
+        @test map(_ -> 1, da)::Vector{Int} == fill(1, length(da))
+        @test map(r -> isnan(r.a1) || nothing, da)::Vector{Nothing} == fill(nothing, length(da))
     end
 
     @test_broken (DictArray(); true)  # what should empty constructor do?

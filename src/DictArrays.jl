@@ -91,6 +91,7 @@ Base.iterate(::DictArray) = error("Iteration deliberately not supported to avoid
 
 Base.propertynames(da::DictArray) = collect(keys(AbstractDictionary(da)))
 Base.getproperty(da::DictArray, i::Symbol) = getproperty(AbstractDictionary(da), i)
+Base.getindex(da::DictArray, i::Cols{Tuple{}}) = fill((;), size(da))
 function Base.getindex(da::DictArray, i::Cols{<:Tuple{Vararg{Symbol}}})
     cspec = NamedTuple{i.cols}(i.cols)
     cols = getindices(AbstractDictionary(da), cspec)::NamedTuple
